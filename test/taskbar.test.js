@@ -1,0 +1,4 @@
+const {test}=require('node:test');const assert=require('node:assert/strict');const {taskbarBounds,positionFraction}=require('../src/taskbar');
+test('bottom taskbar placement centers stacked transparent meter before tray',()=>{assert.deepEqual(taskbarBounds({x:0,y:1032,width:1920,height:48},{x:1680,y:1032,width:240,height:48},null),{x:1556,y:1037,width:112,height:38});});
+test('saved positions stay within resized and top taskbars',()=>{const bar={x:-1920,y:0,width:1920,height:40};assert.deepEqual(taskbarBounds(bar,null,1),{x:-112,y:1,width:112,height:38});assert.equal(taskbarBounds(bar,null,-1).x,-1920);const chosen=taskbarBounds(bar,null,.25);assert.ok(Math.abs(positionFraction(bar,chosen)-.25)<.001);});
+test('vertical taskbar placement remains inside its bounds',()=>{const b=taskbarBounds({x:0,y:0,width:60,height:1080},null,.5);assert.equal(b.width,60);assert.equal(b.x,0);assert.equal(b.y,521);});

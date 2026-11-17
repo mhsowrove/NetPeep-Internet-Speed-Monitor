@@ -1,0 +1,2 @@
+function render(s){document.getElementById('down').textContent=PeepFormat.format(s.error?NaN:s.down,s.unit)+'/s';document.getElementById('up').textContent=PeepFormat.format(s.error?NaN:s.up,s.unit)+'/s';document.body.classList.toggle('unlocked',!s.pinned||s.platform!=='win32');}
+document.getElementById('pin').onclick=()=>window.netpeep.pinMeter(true);window.netpeep.subscribe(render);window.netpeep.snapshot().then(render);
