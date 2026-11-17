@@ -20,13 +20,14 @@ jobs:
           if (Test-Path $compiler) { .\native\build.ps1 -InnoCompiler $compiler } else { .\native\build.ps1 }
           $check = Start-Process .\release\native-windows\NetPeep.exe -ArgumentList '--selftest selftest.txt' -Wait -PassThru
           if ($check.ExitCode -ne 0) { throw 'Native selftest failed' }
+          New-Item -ItemType Directory -Force release/packages | Out-Null
+          Copy-Item ../NetPeep-2.0.0-Windows-x64-Portable.zip,../NetPeep-2.0.0-Windows-x64-Setup.exe release/packages/
       - uses: actions/upload-artifact@v4
         with:
           name: NetPeep-Windows-x64
-          path: |
-            release/native-windows/
-            ../NetPeep-2.0.0-Windows-x64-Portable.zip
-            ../NetPeep-2.0.0-Windows-x64-Setup.exe
+          path: release/packages/*
+          if-no-files-found: error
+          compression-level: 0
   macos:
     strategy:
       fail-fast: false
@@ -48,4 +49,49 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: NetPeep-macOS-${{ matrix.arch }}-development
-          path: release/macos/*
+          path: |
+            release/macos/*.dmg
+            release/macos/*.zip
+          if-no-files-found: error
+          compression-level: 0
+  release:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: NetPeep-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish complete development release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          tag="v$version"
+          cp downloads/NetPeep-source.zip release-assets/NetPeep-source.zip
+          (cd release-assets && sha256sum ./*) > release-checksums.txt
+          cp release-checksums.txt release-assets/SHA256SUMS.txt
+          cat > release-notes.md <<'EOF'
+          NetPeep provides live network throughput, local usage history, per-app activity, selectable Auto/B/KB/MB/GB units, light/dark themes, and a compact interface.
+
+          **Windows:** choose the small native/WebView2 Setup or portable ZIP. Microsoft WebView2 is required for the dashboard and is not bundled. Quit older versions first. The Windows build is unsigned.
+
+          **macOS:** choose arm64 for Apple Silicon or x64 for Intel. DMG and ZIP builds are created on GitHub Mac runners and ad-hoc signed for development. They are not Apple Developer ID signed or notarized. Interactive Mac network collection and permissions still need device testing. Mac downloads bundle Electron and are larger than the Windows downloads.
+
+          Per-app byte counts are best-effort and platform-limited; Windows partial IPv4 TCP bytes require an explicit administrator launch. UDP/QUIC and IPv6 are excluded from Windows process-byte samples. Adapter totals include LAN traffic.
+
+          Source, installation instructions, previews, validation details and SHA256 checksums are included in the repository and release assets. No donation payment is processed inside the app.
+          EOF
+          mapfile -t files < <(find release-assets -maxdepth 1 -type f | sort)
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${files[@]}" --clobber
+          else
+            gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" --title "NetPeep $version" --prerelease --draft --notes-file release-notes.md
+            gh release edit "$tag" --draft=false
+          fi

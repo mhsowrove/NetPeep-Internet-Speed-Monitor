@@ -2,6 +2,8 @@
 
 No macOS binary was produced on the Windows workstation. An actual electron-builder attempt rejected the host with `Build for macOS is supported only on macOS`. The Mac runtime, collectors, permissions and menu-bar behavior have not been exercised on a Mac here.
 
+Both architecture packaging jobs subsequently succeeded on [GitHub Mac runners](https://github.com/mhsowrove/NetPeep-Internet-Speed-Monitor/actions/runs/44046905403). The workflow now publishes a [v2.0.0 development release](https://github.com/mhsowrove/NetPeep-Internet-Speed-Monitor/releases/tag/v2.0.0) after all platform jobs succeed, containing both Mac DMG/ZIP variants and Windows packages. A release becomes available only when the publishing job finishes successfully.
+
 ## GitHub Actions
 
 The **Desktop builds** workflow runs a real `macos-latest` runner for each architecture:
